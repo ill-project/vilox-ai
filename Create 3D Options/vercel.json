@@ -7,7 +7,9 @@
     "VITE_SUPABASE_ANON_KEY": "sb_publishable_VoH6HQ6P85GguaJKsjrHUA_k2nxPTaS"
   },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/admin/(.*)", "destination": "/admin.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
