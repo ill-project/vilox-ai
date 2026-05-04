@@ -4,7 +4,8 @@
   "outputDirectory": "dist",
   "env": {
     "VITE_SUPABASE_URL": "https://adkmouuqcaehzwkxtmew.supabase.co",
-    "VITE_SUPABASE_ANON_KEY": "sb_publishable_VoH6HQ6P85GguaJKsjrHUA_k2nxPTaS"
+    "VITE_SUPABASE_ANON_KEY": "sb_publishable_VoH6HQ6P85GguaJKsjrHUA_k2nxPTaS",
+    "VITE_BUILD_TIME": "2026-05-04-v2"
   },
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
