@@ -6,16 +6,6 @@ export default defineConfig({
   base: '/',
   build: {
     chunkSizeWarningLimit: 2000,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'vendor': ['react', 'react-dom', 'react-router-dom'],
-          'supabase': ['@supabase/supabase-js'],
-          'charts': ['recharts'],
-          'motion': ['motion/react'],
-        }
-      }
-    }
   },
   server: {
     port: 5173
