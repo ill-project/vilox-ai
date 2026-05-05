@@ -201,8 +201,8 @@ export function UpgradePage() {
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#4C6FFF]/10 border border-[#4C6FFF]/20 text-[#4C6FFF] text-xs font-semibold mb-4">
           <Zap className="w-3 h-3" /> Upgrade Your Plan
         </div>
-        <h1 className="text-4xl font-bold text-white mb-3">Choose Your Trading Power</h1>
-        <p className="text-[#9CA3AF] text-lg">Unlock advanced AI tools and maximize your portfolio performance</p>
+        <h1 className="text-2xl sm:text-4xl font-bold text-white mb-3">Choose Your Trading Power</h1>
+        <p className="text-[#9CA3AF] text-sm sm:text-lg">Unlock advanced AI tools and maximize your portfolio performance</p>
       </div>
 
       {/* ── Current Plan Banner ── */}
@@ -282,7 +282,7 @@ export function UpgradePage() {
       </div>
 
       {/* ── Plan Cards ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-20">
         {PLANS.map((plan) => {
           const planRank = PLAN_RANK[plan.id] ?? 0;
           const isCurrentPlan = plan.id === userPlan;
@@ -345,7 +345,7 @@ export function UpgradePage() {
 
                 {/* Price */}
                 <div className="flex items-end gap-1 mb-1">
-                  <span className="text-4xl font-bold text-white">${monthlyRate.toLocaleString()}</span>
+                  <span className="text-3xl sm:text-4xl font-bold text-white">${monthlyRate.toLocaleString()}</span>
                   <span className="text-[#9CA3AF] text-sm mb-1.5">/mo</span>
                   {billing === 'annual' && plan.monthlyPrice > 0 && (
                     <span className="text-[#6B7280] text-xs mb-1.5 ml-1 line-through">
