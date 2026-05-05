@@ -48,3 +48,6 @@ secrets.json
 .cache/
 
 .vercel
+
+.vercel
+.env*.local
