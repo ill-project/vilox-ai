@@ -7,7 +7,7 @@ interface AssetLogoProps {
   imageUrl?: string; // override — used by AI Lab live CoinGecko URLs
 }
 
-// Real logo URLs — crypto via CoinGecko CDN, stocks via Clearbit (no API key required)
+// Real logo URLs — crypto via CoinGecko CDN, stocks via financialmodelingprep.com CDN
 const LOGO_URLS: Record<string, string> = {
   // â”€â”€ Crypto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   BTC:   'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
@@ -31,21 +31,21 @@ const LOGO_URLS: Record<string, string> = {
   OP:    'https://assets.coingecko.com/coins/images/25244/small/Optimism.png',
   ARB:   'https://assets.coingecko.com/coins/images/16547/small/photo_2023-03-29_18.09.07.jpeg',
   // â”€â”€ Stocks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  AAPL:  'https://logo.clearbit.com/apple.com',
-  NVDA:  'https://logo.clearbit.com/nvidia.com',
-  TSLA:  'https://logo.clearbit.com/tesla.com',
-  MSFT:  'https://logo.clearbit.com/microsoft.com',
-  GOOGL: 'https://logo.clearbit.com/google.com',
-  AMZN:  'https://logo.clearbit.com/amazon.com',
-  META:  'https://logo.clearbit.com/meta.com',
-  NFLX:  'https://logo.clearbit.com/netflix.com',
-  JPM:   'https://logo.clearbit.com/jpmorganchase.com',
-  AMD:   'https://logo.clearbit.com/amd.com',
-  V:     'https://logo.clearbit.com/visa.com',
-  COIN:  'https://logo.clearbit.com/coinbase.com',
-  PLTR:  'https://logo.clearbit.com/palantir.com',
-  DIS:   'https://logo.clearbit.com/disney.com',
-  SHOP:  'https://logo.clearbit.com/shopify.com',
+  AAPL:  'https://financialmodelingprep.com/image-stock/AAPL.png',
+  NVDA:  'https://financialmodelingprep.com/image-stock/NVDA.png',
+  TSLA:  'https://financialmodelingprep.com/image-stock/TSLA.png',
+  MSFT:  'https://financialmodelingprep.com/image-stock/MSFT.png',
+  GOOGL: 'https://financialmodelingprep.com/image-stock/GOOGL.png',
+  AMZN:  'https://financialmodelingprep.com/image-stock/AMZN.png',
+  META:  'https://financialmodelingprep.com/image-stock/META.png',
+  NFLX:  'https://financialmodelingprep.com/image-stock/NFLX.png',
+  JPM:   'https://financialmodelingprep.com/image-stock/JPM.png',
+  AMD:   'https://financialmodelingprep.com/image-stock/AMD.png',
+  V:     'https://financialmodelingprep.com/image-stock/V.png',
+  COIN:  'https://financialmodelingprep.com/image-stock/COIN.png',
+  PLTR:  'https://financialmodelingprep.com/image-stock/PLTR.png',
+  DIS:   'https://financialmodelingprep.com/image-stock/DIS.png',
+  SHOP:  'https://financialmodelingprep.com/image-stock/SHOP.png',
 };
 
 export const AssetLogo: React.FC<AssetLogoProps> = ({ symbol, type, size = 'md', imageUrl }) => {
@@ -114,6 +114,10 @@ export const AssetLogo: React.FC<AssetLogoProps> = ({ symbol, type, size = 'md',
         return { bg: 'bg-blue-500/20', border: 'border-blue-500/50', text: 'text-blue-400', char: 'M', shadow: 'shadow-[0_0_15px_rgba(59,130,246,0.2)]' };
       case 'TSLA':
         return { bg: 'bg-rose-500/20', border: 'border-rose-500/50', text: 'text-rose-400', char: 'T', shadow: 'shadow-[0_0_15px_rgba(244,63,113,0.2)]' };
+      case 'USD':
+      case 'USDT':
+      case 'USDC':
+        return { bg: 'bg-emerald-500/20', border: 'border-emerald-500/50', text: 'text-emerald-400', char: '$', shadow: 'shadow-[0_0_15px_rgba(16,185,129,0.2)]' };
       default:
         return { bg: 'bg-white/5', border: 'border-white/20', text: 'text-white', char: symbol.substring(0, 1), shadow: '' };
     }

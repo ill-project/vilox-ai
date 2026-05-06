@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, Activity, X, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router';
@@ -11,15 +11,28 @@ import { AssetLogo } from '../components/AssetLogo';
 import { useMarketData } from '../hooks/useMarketData';
 import { useMarketActions } from '../hooks/useMarketActions';
 import { useStore } from '../store';
+import { useAuth } from '../context/AuthContext';
+import { getUserProfile } from '../lib/db';
 import type { Asset } from '../types';
 
 export const MarketsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const livePrices = useMarketData();
   const activeAsset = useStore((s) => s.activeAsset);
   const setActiveAsset = useStore((s) => s.setActiveAsset);
   const [searchQuery, setSearchQuery] = React.useState('');
   const { selectAsset } = useMarketActions();
+
+  // Fetch user's subscription plan
+  const [userPlan, setUserPlan] = useState<string>('starter');
+  useEffect(() => {
+    if (!user) return;
+    getUserProfile(user.id)
+      .then((p) => { if (p?.plan) setUserPlan(p.plan); })
+      .catch(() => {});
+  }, [user]);
+  const isUserElite = userPlan === 'pro' || userPlan === 'elite';
 
   // Merge live prices into mock assets; fall back to mock price if WS/REST unavailable
   const assets = useMemo<Asset[]>(() => {
@@ -75,6 +88,7 @@ export const MarketsPage: React.FC = () => {
             assets={assets}
             isLoading={Object.keys(livePrices).length === 0}
             searchQuery={searchQuery}
+            isUserElite={isUserElite}
             onSelectAsset={(asset) => {
               // If same asset, deselect; otherwise set active via actions hook (balance check)
               if (activeAsset?.symbol === asset.symbol) {

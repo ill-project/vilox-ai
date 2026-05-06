@@ -103,9 +103,12 @@ export async function createWallet(userId: string): Promise<WalletRow> {
   return data;
 }
 
-// â”€â”€ Atomic trade execution via server-side RPC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// The RPC validates balance and writes both wallet and trade in one transaction.
-// This prevents any client-side manipulation.
+// ── Trade execution via direct wallet update ──────────────────────────────────
+// Reads the live wallet, validates balances, applies debit/credit, then records
+// the trade — all using the authenticated user's Supabase session.
+
+// Wallet columns that map 1-to-1 with crypto symbols
+const CRYPTO_WALLET_COLS = ['btc', 'eth', 'sol', 'usdt'];
 
 export async function rpcExecuteTrade(params: {
   p_symbol: string;
@@ -116,9 +119,82 @@ export async function rpcExecuteTrade(params: {
   p_fee_rate?: number;
   p_strategy_id?: string | null;
 }): Promise<ExecuteTradeResult> {
-  const { data, error } = await supabase.rpc('execute_trade', params);
-  if (error) return { success: false, error: error.message };
-  return data as ExecuteTradeResult;
+  const { p_symbol, p_asset_type, p_side, p_amount, p_price } = params;
+  const feeRate = params.p_fee_rate ?? 0.001;
+  const symbol  = p_symbol.toLowerCase();
+  const gross   = p_amount * p_price;
+  const fee     = gross * feeRate;
+
+  // Authenticate
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return { success: false, error: 'Not authenticated' };
+
+  // Fetch current wallet
+  const { data: wallet, error: walletError } = await supabase
+    .from('wallets')
+    .select('*')
+    .eq('user_id', user.id)
+    .single();
+  if (walletError || !wallet) return { success: false, error: 'Wallet not found' };
+
+  const w           = wallet as Record<string, unknown>;
+  const currentUSD  = Number(w.usd)      || 0;
+  const walletPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+  if (p_side === 'BUY') {
+    const cost = gross + fee;
+    if (currentUSD < cost) {
+      return {
+        success: false,
+        error: `Insufficient USD balance. Need $${cost.toFixed(2)} but have $${currentUSD.toFixed(2)}`,
+      };
+    }
+    walletPatch.usd = currentUSD - cost;
+    if (CRYPTO_WALLET_COLS.includes(symbol)) {
+      walletPatch[symbol] = (Number(w[symbol]) || 0) + p_amount;
+    }
+    // Stocks / ETFs: only USD is debited; no wallet column to credit
+  } else {
+    // SELL
+    const proceeds     = gross - fee;
+    const currentAsset = Number(w[symbol]) || 0;
+    if (currentAsset < p_amount) {
+      return {
+        success: false,
+        error: `Insufficient ${p_symbol} balance. You have ${currentAsset.toFixed(8)}, tried to sell ${p_amount.toFixed(8)}`,
+      };
+    }
+    if (CRYPTO_WALLET_COLS.includes(symbol)) {
+      walletPatch[symbol] = currentAsset - p_amount;
+    }
+    walletPatch.usd = currentUSD + proceeds;
+  }
+
+  // Commit wallet update
+  const { error: updateError } = await supabase
+    .from('wallets')
+    .update(walletPatch)
+    .eq('user_id', user.id);
+  if (updateError) return { success: false, error: `Wallet update failed: ${updateError.message}` };
+
+  // Record the trade
+  const { data: trade } = await supabase
+    .from('trades')
+    .insert({
+      user_id:    user.id,
+      symbol:     p_symbol.toUpperCase(),
+      asset_type: p_asset_type,
+      side:       p_side,
+      amount:     p_amount,
+      price:      p_price,
+      total:      gross,
+      fee,
+      status:     'filled',
+    })
+    .select('id')
+    .single();
+
+  return { success: true, trade_id: trade?.id, fee, total: gross };
 }
 
 // â”€â”€ Atomic withdrawal via server-side RPC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

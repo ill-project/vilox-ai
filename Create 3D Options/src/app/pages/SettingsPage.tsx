@@ -330,11 +330,35 @@ const KYCSection = () => {
   // Phone verification state
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
+  const [countryCode, setCountryCode] = useState('+1');
   const [otpSent, setOtpSent] = useState(false);
   const [otpInput, setOtpInput] = useState('');
   const [totpFactorId, setTotpFactorId] = useState<string | null>(null);
   const [phoneVerifying, setPhoneVerifying] = useState(false);
   const [phoneError, setPhoneError] = useState('');
+
+  // Format local phone number as (XXX) XXX-XXXX while typing
+  const formatLocalPhone = (raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 10);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  };
+
+  const e164Phone = `${countryCode}${phoneInput.replace(/\D/g, '')}`;
+
+  const COUNTRY_CODES = [
+    { code: '+1',  flag: '🇺🇸', label: 'US/CA' },
+    { code: '+44', flag: '🇬🇧', label: 'UK' },
+    { code: '+61', flag: '🇦🇺', label: 'AU' },
+    { code: '+91', flag: '🇮🇳', label: 'IN' },
+    { code: '+49', flag: '🇩🇪', label: 'DE' },
+    { code: '+33', flag: '🇫🇷', label: 'FR' },
+    { code: '+55', flag: '🇧🇷', label: 'BR' },
+    { code: '+234', flag: '🇳🇬', label: 'NG' },
+    { code: '+27', flag: '🇿🇦', label: 'ZA' },
+    { code: '+971', flag: '🇦🇪', label: 'AE' },
+  ];
 
   useEffect(() => {
     if (!user) return;
@@ -350,7 +374,8 @@ const KYCSection = () => {
   }, [user]);
 
   const handleSendOtp = async () => {
-    if (!phoneInput.trim()) { setPhoneError('Enter a phone number first.'); return; }
+    const digits = phoneInput.replace(/\D/g, '');
+    if (!digits || digits.length < 7) { setPhoneError('Enter a valid phone number.'); return; }
     setPhoneError('');
     // Find enrolled TOTP factor
     const { data } = await supabase.auth.mfa.listFactors();
@@ -371,10 +396,10 @@ const KYCSection = () => {
       const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: totpFactorId, code: otpInput });
       if (error) throw new Error('Invalid or expired code. Please try again.');
       // Save phone to profile + mark phone_verified in kyc row
-      await updateUserProfile(user!.id, { phone: phoneInput });
+      await updateUserProfile(user!.id, { phone: e164Phone });
       const now = new Date().toISOString();
       const { error: kycErr } = await supabase.from('kyc').upsert(
-        { user_id: user!.id, phone_verified: true, phone: phoneInput, status: 'unverified', updated_at: now },
+        { user_id: user!.id, phone_verified: true, phone: e164Phone, status: 'unverified', updated_at: now },
         { onConflict: 'user_id' }
       );
       if (kycErr) throw new Error(kycErr.message);
@@ -551,50 +576,63 @@ const KYCSection = () => {
 
         <div className="space-y-4">
           {/* Level 1 — Email */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between opacity-60">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center"><Mail className="w-5 h-5 text-green-400" /></div>
-              <div>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center gap-3 justify-between opacity-60">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center shrink-0"><Mail className="w-5 h-5 text-green-400" /></div>
+              <div className="min-w-0">
                 <h3 className="text-white font-semibold">Level 1 — Email Verification</h3>
-                <p className="text-white/50 text-xs">{user?.email ?? ''}</p>
+                <p className="text-white/50 text-xs truncate">{user?.email ?? ''}</p>
               </div>
             </div>
-            <span className="px-3 py-1 rounded bg-green-500/20 text-green-400 text-xs font-bold uppercase tracking-widest border border-green-500/30">Verified</span>
+            <span className="px-3 py-1 rounded bg-green-500/20 text-green-400 text-xs font-bold uppercase tracking-widest border border-green-500/30 shrink-0">Verified</span>
           </div>
 
           {/* Level 2 — Phone */}
           <div className={`rounded-xl p-5 border transition-all ${phoneVerified ? 'bg-white/5 border-white/10 opacity-70' : 'bg-[#4C6FFF]/5 border-[#4C6FFF]/20'}`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${phoneVerified ? 'bg-green-500/20' : 'bg-[#4C6FFF]/20 border border-[#4C6FFF]/40'}`}>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${phoneVerified ? 'bg-green-500/20' : 'bg-[#4C6FFF]/20 border border-[#4C6FFF]/40'}`}>
                   {phoneVerified
                     ? <CheckCircle2 className="w-5 h-5 text-green-400" />
                     : <Activity className="w-5 h-5 text-[#4C6FFF]" />}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-white font-semibold">Level 2 — Phone Verification</h3>
-                  <p className="text-white/50 text-xs">{phoneVerified ? phoneInput : 'Verify your mobile number'}</p>
+                  <p className="text-white/50 text-xs truncate">{phoneVerified ? e164Phone : 'Verify your mobile number'}</p>
                 </div>
               </div>
               {phoneVerified
-                ? <span className="px-3 py-1 rounded bg-green-500/20 text-green-400 text-xs font-bold uppercase tracking-widest border border-green-500/30">Verified</span>
-                : <span className="px-3 py-1 rounded bg-yellow-500/10 text-yellow-400 text-xs font-bold uppercase tracking-widest border border-yellow-500/20">Pending</span>}
+                ? <span className="px-3 py-1 rounded bg-green-500/20 text-green-400 text-xs font-bold uppercase tracking-widest border border-green-500/30 shrink-0">Verified</span>
+                : <span className="px-3 py-1 rounded bg-yellow-500/10 text-yellow-400 text-xs font-bold uppercase tracking-widest border border-yellow-500/20 shrink-0">Pending</span>}
             </div>
 
             {!phoneVerified && (
               <div className="space-y-3 mt-2">
                 {!otpSent ? (
-                  <div className="flex gap-3">
-                    <input
-                      type="tel"
-                      value={phoneInput}
-                      onChange={e => { setPhoneInput(e.target.value); setPhoneError(''); }}
-                      placeholder="+1 (555) 000-0000"
-                      className="flex-1 h-11 bg-white/5 border border-white/10 rounded-xl px-4 text-white focus:border-[#4C6FFF] outline-none transition-all text-sm placeholder:text-white/30"
-                    />
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <select
+                        value={countryCode}
+                        onChange={e => setCountryCode(e.target.value)}
+                        className="h-11 bg-white/5 border border-white/10 rounded-xl px-2 text-white text-sm focus:border-[#4C6FFF] outline-none transition-all shrink-0"
+                      >
+                        {COUNTRY_CODES.map(c => (
+                          <option key={c.code} value={c.code} className="bg-[#0F111A]">
+                            {c.flag} {c.code}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="tel"
+                        value={phoneInput}
+                        onChange={e => { setPhoneInput(formatLocalPhone(e.target.value)); setPhoneError(''); }}
+                        placeholder="(555) 000-0000"
+                        className="flex-1 h-11 bg-white/5 border border-white/10 rounded-xl px-4 text-white focus:border-[#4C6FFF] outline-none transition-all text-sm placeholder:text-white/30 min-w-0"
+                      />
+                    </div>
                     <button
                       onClick={handleSendOtp}
-                      className="px-5 h-11 rounded-xl bg-[#4C6FFF] text-white font-semibold text-sm hover:bg-[#3d5acc] transition-colors whitespace-nowrap"
+                      className="w-full h-11 rounded-xl bg-[#4C6FFF] text-white font-semibold text-sm hover:bg-[#3d5acc] transition-colors"
                     >
                       Verify with Authenticator
                     </button>
@@ -635,9 +673,9 @@ const KYCSection = () => {
           {/* Level 3 — upload form */}
           {!isApproved && (
             <div className="bg-[#4C6FFF]/5 border border-[#4C6FFF]/30 rounded-xl p-6">
-              <div className="flex items-start justify-between mb-6">
+              <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-[#4C6FFF]/20 flex items-center justify-center border border-[#4C6FFF]/50">
+                  <div className="w-10 h-10 rounded-full bg-[#4C6FFF]/20 flex items-center justify-center border border-[#4C6FFF]/50 shrink-0">
                     <ShieldAlert className="w-5 h-5 text-[#4C6FFF]" />
                   </div>
                   <div>
@@ -645,7 +683,7 @@ const KYCSection = () => {
                     <p className="text-white/60 text-sm">Upload a government-issued ID and selfie</p>
                   </div>
                 </div>
-                <span className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-widest border ${badge.bg} ${badge.color} ${badge.border}`}>{badge.label}</span>
+                <span className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-widest border shrink-0 ${badge.bg} ${badge.color} ${badge.border}`}>{badge.label}</span>
               </div>
 
               {kycStatus === 'pending' ? (
@@ -1029,9 +1067,9 @@ const SecuritySection = () => {
               <ShieldAlert className="w-4 h-4 text-white/50" /> Anti-Phishing Code
             </h3>
             <p className="text-sm text-white/60 mb-4">Set a custom phrase that will appear in all official Vilox AI emails to verify their authenticity.</p>
-            <div className="flex gap-4">
-              <input type="text" defaultValue="VILOX-SAFE" className="flex-1 h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white font-mono focus:border-[#4C6FFF] transition-all outline-none" />
-              <button className="px-6 py-2.5 rounded-xl bg-[#4C6FFF] text-white font-semibold hover:bg-[#3d5acc] transition-colors">Update</button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input type="text" defaultValue="VILOX-SAFE" className="flex-1 h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white font-mono focus:border-[#4C6FFF] transition-all outline-none min-w-0" />
+              <button className="h-12 px-6 rounded-xl bg-[#4C6FFF] text-white font-semibold hover:bg-[#3d5acc] transition-colors shrink-0">Update</button>
             </div>
             <div className="mt-4 p-4 rounded-xl bg-[#4C6FFF]/5 border border-[#4C6FFF]/20 flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-[#4C6FFF] shrink-0 mt-0.5" />

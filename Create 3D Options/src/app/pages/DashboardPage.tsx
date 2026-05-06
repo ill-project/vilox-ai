@@ -1,4 +1,4 @@
-﻿import React, { useMemo } from 'react';
+﻿import React, { useMemo, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router';
 import {
@@ -11,10 +11,9 @@ import { AssetLogo } from '../components/AssetLogo';
 import { useAuth } from '../context/AuthContext';
 import { useMarketData } from '../hooks/useMarketData';
 import { useSignals } from '../hooks/useSignals';
-import { useStore } from '../store';
 import { MOCK_STRATEGIES } from '../mockData';
+import { getUserTransactions } from '../lib/db';
 import { DepositModal, WithdrawModal } from '../components/wallet/Modals';
-import { useState } from 'react';
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -57,10 +56,10 @@ function StatCard({
       <div className="w-10 h-10 rounded-xl bg-[#4C6FFF]/10 border border-[#4C6FFF]/20 flex items-center justify-center shrink-0">
         <Icon className="w-5 h-5 text-[#4C6FFF]" />
       </div>
-      <div className="min-w-0">
-        <p className="text-xs text-white/40 uppercase tracking-widest mb-1">{label}</p>
-        <p className="text-xl font-bold text-white leading-tight">{value}</p>
-        {sub && <p className={`text-xs mt-0.5 ${trendColor}`}>{sub}</p>}
+      <div className="min-w-0 overflow-hidden">
+        <p className="text-[10px] md:text-xs text-white/40 uppercase tracking-widest mb-1 leading-tight">{label}</p>
+        <p className="text-sm md:text-xl font-bold text-white leading-tight break-words">{value}</p>
+        {sub && <p className={`text-[10px] md:text-xs mt-0.5 break-words ${trendColor}`}>{sub}</p>}
       </div>
     </motion.div>
   );
@@ -101,7 +100,6 @@ export function DashboardPage() {
   const { wallet, walletLoading, activeStrategies } = useGlobalContext();
   const prices = useMarketData();
   const { signals, isLoading: signalsLoading } = useSignals();
-  const { transactions } = useStore();
 
   const [depositOpen, setDepositOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -129,7 +127,38 @@ export function DashboardPage() {
   const change24hUSD = totalValue * (change24h / 100);
 
   const topSignals = useMemo(() => signals.slice(0, 5), [signals]);
-  const recentTrades = useMemo(() => [...transactions].reverse().slice(0, 6), [transactions]);
+
+  // Load real trades from transactions table (type='transfer', notes='BUY/SELL N SYMBOL')
+  const [recentTrades, setRecentTrades] = useState<Array<{ id: string; symbol: string; type: 'BUY' | 'SELL'; amount: number; price: number; date: string }>>([]);
+  useEffect(() => {
+    if (!user) return;
+    getUserTransactions(user.id).then((rows) => {
+      const STOCK_SYMBOLS = new Set(['AAPL','NVDA','TSLA','MSFT','GOOGL','AMZN','META','NFLX','JPM','AMD','V','COIN','PLTR','DIS','SHOP']);
+      const trades = rows
+        .filter((r) => r.type === 'transfer')
+        .filter((r) => {
+          const sym = String(r.asset ?? '').toUpperCase();
+          return CRYPTO_SYMBOLS.has(sym) || STOCK_SYMBOLS.has(sym);
+        })
+        .map((r) => {
+          const sym = String(r.asset ?? '').toUpperCase();
+          const parts = String(r.notes ?? '').trim().split(/\s+/);
+          const side = (parts[0]?.toUpperCase() === 'SELL' ? 'SELL' : 'BUY') as 'BUY' | 'SELL';
+          const shares = parseFloat(parts[1] ?? '') || 1;
+          const usdCost = Number(r.amount) || 0;
+          return {
+            id: String(r.id),
+            symbol: sym,
+            type: side,
+            amount: shares,
+            price: shares > 0 ? usdCost / shares : usdCost,
+            date: String(r.created_at ?? ''),
+          };
+        })
+        .slice(0, 6);
+      setRecentTrades(trades);
+    }).catch(() => {});
+  }, [user]);
 
   const activeStrategyDetails = useMemo(
     () => MOCK_STRATEGIES.filter(s => activeStrategies.includes(s.id)).slice(0, 2),
@@ -212,10 +241,10 @@ export function DashboardPage() {
                   <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
                     ${fmt(totalValue)}
                   </h2>
-                  <div className={`flex items-center gap-1 mb-1 text-xs md:text-sm font-semibold ${change24h >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <div className={`flex flex-wrap items-center gap-1 mb-1 text-xs md:text-sm font-semibold ${change24h >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {change24h >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                     {change24h >= 0 ? '+' : ''}{change24h.toFixed(2)}%
-                    <span className="text-white/40 font-normal ml-1">
+                    <span className="text-white/40 font-normal ml-1 whitespace-nowrap">
                       ({change24h >= 0 ? '+' : ''}${fmt(change24hUSD)}) today
                     </span>
                   </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router';
-import { Activity, LayoutDashboard, LogOut, BarChart2, Bot, X, Wallet, Settings, Cpu, Menu, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, Zap } from 'lucide-react';
+import { Activity, LayoutDashboard, LogOut, BarChart2, Bot, X, Wallet, Settings, Menu, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './Card3D';
 import { signOut } from '../lib/auth';
@@ -202,7 +202,8 @@ export function Layout() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="md:hidden fixed top-[57px] left-0 w-full z-40 bg-slate-950/95 backdrop-blur-xl border-b border-white/10 shadow-2xl"
+            className="md:hidden fixed top-[57px] left-0 w-full z-40 bg-slate-950/95 backdrop-blur-xl border-b border-white/10 shadow-2xl overflow-y-auto"
+            style={{ maxHeight: 'calc(100vh - 57px)' }}
           >
             <div className="flex flex-col p-4 space-y-2">
               <div className="text-xs text-white/40 font-mono tracking-widest uppercase mb-2 px-3 pt-2">Menu</div>
@@ -223,28 +224,35 @@ export function Layout() {
                 </NavLink>
               ))}
 
-              {/* Vilox Assistant Status Widget */}
-              <div className="mt-4 pt-4 border-t border-white/10">
-                <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-16 h-16 bg-[#4C6FFF]/20 blur-xl rounded-full" />
-                  <div className="flex items-center gap-2 mb-2">
-                    <Cpu className="w-4 h-4 text-[#4C6FFF]" />
-                    <span className="text-sm font-semibold">Vilox Assistant</span>
+              {/* User profile + actions */}
+              <div className="mt-4 pt-4 border-t border-white/10 space-y-1">
+                <div className="flex items-center gap-3 px-4 py-2">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#4C6FFF] to-[#6C3BFF] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                    {profile?.full_name ? profile.full_name.slice(0, 2).toUpperCase() : user?.email?.slice(0, 2).toUpperCase() ?? '??'}
                   </div>
-                  <p className="text-xs text-white/50 leading-relaxed mb-3">System status nominal. Quantum engine active.</p>
-                  <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                    <div className="w-[85%] h-full bg-[#4C6FFF] shadow-[0_0_5px_#4C6FFF]" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{profile?.full_name ?? user?.email ?? 'User'}</p>
+                    <p className="text-xs text-slate-400 truncate capitalize">{profile?.plan ?? 'Starter'} Plan</p>
                   </div>
                 </div>
+                <NavLink
+                  to="/app/upgrade"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-4 rounded-xl text-[#FFD700] hover:bg-[#FFD700]/10 transition-colors"
+                >
+                  <Zap className="w-5 h-5 shrink-0 text-[#FFD700]" style={{ filter: 'drop-shadow(0 0 6px #FFD700)' }} />
+                  <span className="text-base font-semibold">
+                    {profile?.plan?.toLowerCase() === 'elite' ? 'Manage Plan' : 'Upgrade Plan'}
+                  </span>
+                </NavLink>
+                <button
+                  onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
+                  className="flex items-center gap-3 px-4 py-4 rounded-xl text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-colors w-full"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span className="text-base font-medium">Log Out</span>
+                </button>
               </div>
-
-              <button
-                onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
-                className="flex items-center gap-3 px-4 py-4 rounded-xl text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-              >
-                <LogOut className="w-5 h-5" />
-                <span className="text-base font-medium">Log Out</span>
-              </button>
             </div>
           </motion.div>
         )}
@@ -396,7 +404,7 @@ export function Layout() {
       {/* Main Content — margin tracks sidebar width on desktop only */}
       <main
         className={cn(
-          'flex-1 pt-[57px] pb-20 md:pb-0 md:pt-0 relative overflow-x-hidden min-h-screen transition-[margin] duration-300',
+          'flex-1 pt-[57px] md:pt-0 relative overflow-x-hidden min-h-screen transition-[margin] duration-300',
           collapsed ? 'md:ml-[72px]' : 'md:ml-[256px]'
         )}
       >
@@ -404,30 +412,7 @@ export function Layout() {
         <Outlet />
       </main>
 
-      {/* ─── Mobile: Bottom Navigation Bar ─── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-xl border-t border-white/10">
-        <div className="flex items-center justify-around px-2 py-2">
-          {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) => cn(
-                'flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors min-w-[52px]',
-                isActive
-                  ? 'text-[#4C6FFF]'
-                  : 'text-white/40 hover:text-white/70'
-              )}
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon className={cn('w-5 h-5', isActive && 'drop-shadow-[0_0_6px_rgba(76,111,255,0.8)]')} />
-                  <span className="text-[10px] font-medium leading-none">{label.split(' ')[0]}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
-        </div>
-      </nav>
+
 
       {/* Tawk.to chat widget replaces FloatingAI and LiveChat */}
     </div>

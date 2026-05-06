@@ -9,9 +9,10 @@ interface MarketGridProps {
   isLoading: boolean;
   onSelectAsset: (asset: Asset) => void;
   searchQuery: string;
+  isUserElite?: boolean;
 }
 
-export const MarketGrid: React.FC<MarketGridProps> = ({ assets, isLoading, onSelectAsset, searchQuery }) => {
+export const MarketGrid: React.FC<MarketGridProps> = ({ assets, isLoading, onSelectAsset, searchQuery, isUserElite = false }) => {
   const [showShimmer, setShowShimmer] = useState(isLoading);
 
   useEffect(() => {
@@ -57,7 +58,7 @@ export const MarketGrid: React.FC<MarketGridProps> = ({ assets, isLoading, onSel
           key={asset.id}
           asset={asset}
           onClick={onSelectAsset}
-          isUserElite={false} // Defaulting to False to show locked states
+          isUserElite={isUserElite} // from user's profile plan
         />
       ))}
     </motion.div>

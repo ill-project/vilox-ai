@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, TrendingUp, TrendingDown, Lock, ExternalLink, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router';
@@ -9,6 +9,8 @@ import { MOCK_ASSETS } from '../mockData';
 import { useMarketData } from '../hooks/useMarketData';
 import { useMarketActions } from '../hooks/useMarketActions';
 import { useStore } from '../store';
+import { useAuth } from '../context/AuthContext';
+import { getUserProfile } from '../lib/db';
 import type { Asset } from '../types';
 
 function getSignalBadge(signal: string) {
@@ -19,12 +21,23 @@ function getSignalBadge(signal: string) {
 
 export function AppMarketsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const livePrices = useMarketData();
   const activeAsset = useStore((s) => s.activeAsset);
   const setActiveAsset = useStore((s) => s.setActiveAsset);
   const { selectAsset } = useMarketActions();
   const [activeFilter, setActiveFilter] = useState('All');
   const [search, setSearch] = useState('');
+
+  // Fetch user's subscription plan
+  const [userPlan, setUserPlan] = useState<string>('starter');
+  useEffect(() => {
+    if (!user) return;
+    getUserProfile(user.id)
+      .then((p) => { if (p?.plan) setUserPlan(p.plan); })
+      .catch(() => {});
+  }, [user]);
+  const isUserElite = userPlan === 'pro' || userPlan === 'elite';
 
   const filters = ['All', 'Stocks', 'Crypto', 'AI Picks'];
 
@@ -119,20 +132,21 @@ export function AppMarketsPage() {
                   {filteredData.map((item) => {
                     const isActive = activeAsset?.symbol === item.symbol;
                     const changeStr = item.change24h >= 0 ? `+${item.change24h.toFixed(2)}%` : `${item.change24h.toFixed(2)}%`;
-                    const eliteMask = item.isElite ? 'blur-sm opacity-20 pointer-events-none select-none' : '';
+                    const isLocked = item.isElite && !isUserElite;
+                    const eliteMask = isLocked ? 'blur-sm opacity-20 pointer-events-none select-none' : '';
                     return (
                       <motion.tr
                         key={item.id}
                         onClick={() => {
-                          if (item.isElite) { navigate('/app/upgrade'); return; }
+                          if (isLocked) { navigate('/app/upgrade'); return; }
                           if (isActive) {
                             setActiveAsset(null);
                           } else {
                             setActiveAsset(item);
                           }
                         }}
-                        whileHover={{ backgroundColor: item.isElite ? 'rgba(255,215,0,0.04)' : 'rgba(31,41,55,0.4)' }}
-                        className={`transition-colors cursor-pointer group ${isActive ? 'bg-[#4C6FFF]/10' : ''} ${item.isElite ? 'relative' : ''}`}
+                        whileHover={{ backgroundColor: isLocked ? 'rgba(255,215,0,0.04)' : 'rgba(31,41,55,0.4)' }}
+                        className={`transition-colors cursor-pointer group ${isActive ? 'bg-[#4C6FFF]/10' : ''} ${isLocked ? 'relative' : ''}`}
                       >
                         <td className="px-6 py-5">
                           <div className={`flex items-center gap-3 ${eliteMask}`}>
@@ -141,7 +155,7 @@ export function AppMarketsPage() {
                               <p className="font-bold text-base text-white">{item.symbol}</p>
                               <p className="text-xs text-[#9CA3AF]">{item.name}</p>
                             </div>
-                            {item.isElite && (
+                            {isLocked && (
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBBF24]/10 text-[#FBBF24] border border-[#FBBF24]/20">
                                 Elite
                               </span>
@@ -173,7 +187,7 @@ export function AppMarketsPage() {
                           </div>
                         </td>
                         <td className="px-6 py-5 text-right">
-                          {!item.isElite && (
+                          {!isLocked && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -197,7 +211,7 @@ export function AppMarketsPage() {
                             </button>
                           )}
                         </td>
-                        {item.isElite && (
+                        {isLocked && (
                           <td
                             colSpan={6}
                             className="absolute inset-0 z-10 p-0"

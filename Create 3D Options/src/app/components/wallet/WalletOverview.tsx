@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowDownLeft, ArrowUpRight, ArrowRightLeft, Info, RefreshCw } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Info, RefreshCw } from "lucide-react";
 import { Button, Card, cn } from "./shared";
 import { motion } from "motion/react";
 import { useGlobalContext } from "../../context/GlobalContext";
@@ -104,18 +104,14 @@ const WalletOverview = ({ onDeposit, onWithdraw, onTransfer }: WalletOverviewPro
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row w-full lg:w-auto gap-3">
-          <Button onClick={onDeposit} className="w-full sm:w-auto px-6 py-3.5 shadow-[0_0_20px_rgba(79,124,255,0.15)] group">
-            <ArrowDownLeft size={18} className="mr-2 group-hover:-translate-y-0.5 group-hover:-translate-x-0.5 transition-transform" />
+        <div className="flex gap-2 flex-wrap">
+          <Button onClick={onDeposit} className="flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold shadow-[0_0_20px_rgba(79,124,255,0.15)] group">
+            <ArrowDownLeft size={16} className="group-hover:-translate-y-0.5 group-hover:-translate-x-0.5 transition-transform" />
             Deposit
           </Button>
-          <Button onClick={onWithdraw} variant="secondary" className="w-full sm:w-auto px-6 py-3.5 group">
-            <ArrowUpRight size={18} className="mr-2 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
+          <Button onClick={onWithdraw} variant="secondary" className="flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold group">
+            <ArrowUpRight size={16} className="group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
             Withdraw
-          </Button>
-          <Button onClick={onTransfer} variant="secondary" className="w-full sm:w-auto px-6 py-3.5">
-            <ArrowRightLeft size={18} className="mr-2" />
-            Transfer
           </Button>
         </div>
       </Card>

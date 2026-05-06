@@ -9,7 +9,7 @@ import Decimal from 'decimal.js';
 import { useStore, AssetSymbol } from '../store';
 import { useGlobalContext } from '../context/GlobalContext';
 import { useMarketData } from '../hooks/useMarketData';
-import { calcFee, calcBuyCost, calcSellProceeds, toUSD } from '../services/tradingService';
+import { calcFee, calcBuyCost, calcSellProceeds, toUSD, FEE_RATE } from '../services/tradingService';
 import { AssetLogo } from './AssetLogo';
 import { MarketChart } from './MarketChart';
 import { cn } from './Card3D';
@@ -98,6 +98,17 @@ export const TradeModal: React.FC<TradeModalProps> = ({ asset, onClose }) => {
     ? (Number((wallet as unknown as Record<string, unknown>)[tradingSymbol.toLowerCase()] ?? 0) || 0)
     : 0;
 
+  // Total crypto value across all holdings (BTC, ETH, SOL)
+  const btcPrice = marketPrices['BTC']?.price ?? 0;
+  const ethPrice = marketPrices['ETH']?.price ?? 0;
+  const solPrice = marketPrices['SOL']?.price ?? 0;
+  const totalCryptoValue = wallet !== null
+    ? (Number(wallet.btc) || 0) * btcPrice
+    + (Number(wallet.eth) || 0) * ethPrice
+    + (Number(wallet.sol) || 0) * solPrice
+    : 0;
+  const hasAnyFunds = availableUSD >= 0.01 || totalCryptoValue >= 0.01 || availableAsset > 0;
+
   const numericAmount = parseFloat(amount) || 0;
   const decAmount = new Decimal(numericAmount || 0);
   const decPrice  = new Decimal(rawPrice || 0);
@@ -111,7 +122,8 @@ export const TradeModal: React.FC<TradeModalProps> = ({ asset, onClose }) => {
   const quickFill = (pct: number) => {
     if (!rawPrice) return;
     if (side === 'BUY') {
-      setAmount(((availableUSD * pct) / rawPrice).toFixed(6));
+      const spendable = availableUSD >= 0.01 ? availableUSD : totalCryptoValue;
+      setAmount(((spendable * pct) / rawPrice).toFixed(6));
     } else {
       setAmount((availableAsset * pct).toFixed(6));
     }
@@ -119,6 +131,29 @@ export const TradeModal: React.FC<TradeModalProps> = ({ asset, onClose }) => {
 
   const handleConfirm = async () => {
     if (numericAmount <= 0) return;
+    // Client-side balance check before hitting the trade engine
+    if (side === 'BUY') {
+      const totalCost = numericAmount * rawPrice * (1 + FEE_RATE.toNumber());
+      if (availableUSD < totalCost) {
+        if (totalCryptoValue >= totalCost) {
+          setTradeError(
+            `You need $${totalCost.toFixed(2)} USD to buy ${tradingSymbol}. ` +
+            `You have ~$${totalCryptoValue.toFixed(2)} in crypto but $${availableUSD.toFixed(2)} USD. ` +
+            `Sell some of your crypto first, then return here to complete this trade.`
+          );
+        } else {
+          setTradeError(
+            `Insufficient funds. Need $${totalCost.toFixed(2)} — you have $${availableUSD.toFixed(2)} USD.`
+          );
+        }
+        return;
+      }
+    } else {
+      if (availableAsset < numericAmount) {
+        setTradeError(`Insufficient ${tradingSymbol}. You have ${availableAsset.toFixed(6)} but tried to sell ${numericAmount.toFixed(6)}.`);
+        return;
+      }
+    }
     setIsExecuting(true);
     setTradeError(null);
     try {
@@ -143,7 +178,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({ asset, onClose }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm bg-[#0F111A]/80"
+          className="fixed inset-0 z-[200] flex items-center justify-center pt-[57px] md:pt-4 px-4 pb-4 sm:px-6 sm:pb-6 backdrop-blur-sm bg-[#0F111A]/80"
           onClick={(e) => e.target === e.currentTarget && !isExecuting && !success && onClose()}
         >
           <motion.div
@@ -285,8 +320,8 @@ export const TradeModal: React.FC<TradeModalProps> = ({ asset, onClose }) => {
                 )}
               </AnimatePresence>
 
-              {/* Fund Account Gate: shown when wallet has no USD balance */}
-              {!walletLoading && availableUSD < 0.01 && !isExecuting && !success && (
+              {/* Fund Account Gate: shown only when wallet has no funds at all */}
+              {!walletLoading && !hasAnyFunds && !isExecuting && !success && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -373,7 +408,9 @@ export const TradeModal: React.FC<TradeModalProps> = ({ asset, onClose }) => {
                   <span className="text-white/50">Available</span>
                   <span className="text-white font-mono font-medium">
                     {side === 'BUY'
-                      ? `$${availableUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })} USD`
+                      ? availableUSD >= 0.01
+                        ? `$${availableUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })} USD`
+                        : `~$${totalCryptoValue.toLocaleString(undefined, { maximumFractionDigits: 2 })} (crypto)`
                       : `${availableAsset.toFixed(6)} ${tradingSymbol}`}
                   </span>
                 </div>

@@ -83,12 +83,16 @@ export const AssetCard3D: React.FC<AssetCard3DProps> = ({ asset, onClick, isUser
 
         {/* Price & Change */}
         <div className="my-4">
-          <div className="text-3xl font-mono text-white tracking-tighter">
-            ${asset.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+          <div className="text-xl sm:text-2xl font-mono text-white tracking-tight truncate">
+            ${asset.price < 0.01
+              ? asset.price.toFixed(6)
+              : asset.price < 1
+              ? asset.price.toFixed(4)
+              : asset.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className={`flex items-center gap-1 text-sm mt-1 font-mono ${asset.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {asset.change24h >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-            {Math.abs(asset.change24h)}% (24h)
+            {Math.abs(asset.change24h).toFixed(2)}% (24h)
           </div>
         </div>
 
