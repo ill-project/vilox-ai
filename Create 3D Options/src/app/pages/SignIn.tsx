@@ -62,7 +62,13 @@ export function SignIn() {
     setOtpError('');
     setOtpBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email: otpEmail, options: { shouldCreateUser: false } });
+      const { error } = await supabase.auth.signInWithOtp({
+        email: otpEmail,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: window.location.origin
+        }
+      });
       if (error) throw error;
       setOtpSent(true);
     } catch (err: any) {
@@ -134,7 +140,12 @@ export function SignIn() {
               </div>
             </div>
             <div className="space-y-1 pb-4">
-              <label className="text-sm font-medium text-slate-300">Password</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-slate-300">Password</label>
+                <Link to="/forgot-password" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                 <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
