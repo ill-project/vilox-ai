@@ -17,38 +17,65 @@ export function UpdatePasswordPage() {
   const [recoveryState, setRecoveryState] = useState<'checking' | 'valid' | 'invalid'>('checking');
 
   useEffect(() => {
-    // Listen for the PASSWORD_RECOVERY event fired by Supabase when the
-    // user clicks the reset link in their email (which contains #access_token).
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        // Valid recovery session — allow the user to set a new password
-        setRecoveryState('valid');
-      } else if (event === 'SIGNED_IN' && session) {
-        // Already signed in (e.g. user navigated here while logged in)
-        // Still allow password update
-        setRecoveryState('valid');
-      }
-    });
+    let cancelled = false;
 
-    // Also check if there's already an active session (handles page refresh)
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const tryRecover = async () => {
+      // 1. Handle PKCE ?code= in URL (supabase v2 default flow)
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!cancelled) {
+          setRecoveryState(error ? 'invalid' : 'valid');
+        }
+        return;
+      }
+
+      // 2. Handle implicit #access_token= in URL hash
+      const hash = window.location.hash;
+      if (hash.includes('type=recovery') || hash.includes('access_token')) {
+        // Supabase client processes the hash automatically — wait for the event
+      }
+
+      // 3. Listen for PASSWORD_RECOVERY event (covers both PKCE and implicit flows)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (cancelled) return;
+        if (event === 'PASSWORD_RECOVERY') {
+          setRecoveryState('valid');
+        } else if (event === 'SIGNED_IN' && session) {
+          setRecoveryState('valid');
+        }
+      });
+
+      // 4. Check for existing session (handles page refresh)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled) return;
+
       if (session) {
         setRecoveryState('valid');
-      } else {
-        // No session yet — give the Supabase client a moment to process
-        // the #access_token hash from the URL and fire onAuthStateChange
-        const timer = setTimeout(() => {
-          setRecoveryState(prev => {
-            // If still 'checking' after timeout, the link is invalid/expired
-            if (prev === 'checking') return 'invalid';
-            return prev;
-          });
-        }, 2000);
-        return () => clearTimeout(timer);
+        subscription.unsubscribe();
+        return;
       }
-    });
 
-    return () => subscription.unsubscribe();
+      // 5. Fallback timeout — if nothing has fired after 3s, the link is invalid
+      const timer = setTimeout(() => {
+        if (!cancelled) {
+          setRecoveryState(prev => (prev === 'checking' ? 'invalid' : prev));
+        }
+      }, 3000);
+
+      return () => {
+        clearTimeout(timer);
+        subscription.unsubscribe();
+      };
+    };
+
+    const cleanupPromise = tryRecover();
+
+    return () => {
+      cancelled = true;
+      cleanupPromise.then(cleanup => cleanup?.());
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
