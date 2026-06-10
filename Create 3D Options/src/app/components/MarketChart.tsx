@@ -50,7 +50,7 @@ function klinesToCandles(klines: number[][]): CandlestickData<Time>[] {
 
 async function fetchBinanceCandles(binanceSym: string): Promise<CandlestickData<Time>[]> {
   const url = `https://api.binance.com/api/v3/klines?symbol=${binanceSym.toUpperCase()}&interval=1m&limit=120`;
-  const resp = await fetch(url, { signal: AbortSignal.timeout(6_000) });
+  const resp = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(6_000) });
   if (!resp.ok) throw new Error(`Binance ${resp.status}`);
   const raw: number[][] = await resp.json();
   return klinesToCandles(raw);
@@ -58,7 +58,7 @@ async function fetchBinanceCandles(binanceSym: string): Promise<CandlestickData<
 
 async function fetchKrakenCandles(pair: string): Promise<CandlestickData<Time>[]> {
   const url = `https://api.kraken.com/0/public/OHLC?pair=${pair}&interval=1`;
-  const resp = await fetch(url, { signal: AbortSignal.timeout(8_000) });
+  const resp = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8_000) });
   if (!resp.ok) throw new Error(`Kraken ${resp.status}`);
   const json = await resp.json() as { result?: Record<string, number[][]>; error?: string[] };
   if (json.error?.length) throw new Error(`Kraken: ${json.error[0]}`);
@@ -81,7 +81,7 @@ async function fetchKrakenCandles(pair: string): Promise<CandlestickData<Time>[]
 
 async function fetchCoinGeckoCandles(coinId: string): Promise<CandlestickData<Time>[]> {
   const url = `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=1`;
-  const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+  const resp = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(10_000) });
   if (!resp.ok) throw new Error(`CoinGecko ${resp.status}`);
   const raw: number[][] = await resp.json();
   return raw
@@ -109,7 +109,7 @@ async function fetchStockCandles(symbol: string): Promise<CandlestickData<Time>[
   if (!AV_KEY) return [];
   try {
     const url = `${AV_BASE}?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=1min&outputsize=compact&apikey=${AV_KEY}`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    const resp = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) return [];
 
     const json = await resp.json() as {

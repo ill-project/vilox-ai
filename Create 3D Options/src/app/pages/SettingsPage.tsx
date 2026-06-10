@@ -1,4 +1,7 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import type { Value as E164Number } from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { getUserProfile, updateUserProfile, getKycStatus, submitKyc, upsertReferral } from '../lib/db';
@@ -329,36 +332,14 @@ const KYCSection = () => {
 
   // Phone verification state
   const [phoneVerified, setPhoneVerified] = useState(false);
-  const [phoneInput, setPhoneInput] = useState('');
-  const [countryCode, setCountryCode] = useState('+1');
+  const [phoneValue, setPhoneValue] = useState<E164Number | undefined>(undefined);
   const [otpSent, setOtpSent] = useState(false);
   const [otpInput, setOtpInput] = useState('');
   const [totpFactorId, setTotpFactorId] = useState<string | null>(null);
   const [phoneVerifying, setPhoneVerifying] = useState(false);
   const [phoneError, setPhoneError] = useState('');
 
-  // Format local phone number as (XXX) XXX-XXXX while typing
-  const formatLocalPhone = (raw: string) => {
-    const digits = raw.replace(/\D/g, '').slice(0, 10);
-    if (digits.length <= 3) return digits;
-    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  };
-
-  const e164Phone = `${countryCode}${phoneInput.replace(/\D/g, '')}`;
-
-  const COUNTRY_CODES = [
-    { code: '+1',  flag: '🇺🇸', label: 'US/CA' },
-    { code: '+44', flag: '🇬🇧', label: 'UK' },
-    { code: '+61', flag: '🇦🇺', label: 'AU' },
-    { code: '+91', flag: '🇮🇳', label: 'IN' },
-    { code: '+49', flag: '🇩🇪', label: 'DE' },
-    { code: '+33', flag: '🇫🇷', label: 'FR' },
-    { code: '+55', flag: '🇧🇷', label: 'BR' },
-    { code: '+234', flag: '🇳🇬', label: 'NG' },
-    { code: '+27', flag: '🇿🇦', label: 'ZA' },
-    { code: '+971', flag: '🇦🇪', label: 'AE' },
-  ];
+  const e164Phone = phoneValue ?? '';
 
   useEffect(() => {
     if (!user) return;
@@ -369,13 +350,15 @@ const KYCSection = () => {
       })
       .catch(() => {});
     getUserProfile(user.id)
-      .then(data => { if (data?.phone) setPhoneInput(data.phone); })
+      .then(data => { if (data?.phone) setPhoneValue(data.phone as E164Number); })
       .catch(() => {});
   }, [user]);
 
   const handleSendOtp = async () => {
-    const digits = phoneInput.replace(/\D/g, '');
-    if (!digits || digits.length < 7) { setPhoneError('Enter a valid phone number.'); return; }
+    if (!phoneValue || !isValidPhoneNumber(phoneValue)) {
+      setPhoneError('Please enter a valid phone number.');
+      return;
+    }
     setPhoneError('');
     // Find enrolled TOTP factor
     const { data } = await supabase.auth.mfa.listFactors();
@@ -610,24 +593,15 @@ const KYCSection = () => {
               <div className="space-y-3 mt-2">
                 {!otpSent ? (
                   <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <select
-                        value={countryCode}
-                        onChange={e => setCountryCode(e.target.value)}
-                        className="h-11 bg-white/5 border border-white/10 rounded-xl px-2 text-white text-sm focus:border-[#4C6FFF] outline-none transition-all shrink-0"
-                      >
-                        {COUNTRY_CODES.map(c => (
-                          <option key={c.code} value={c.code} className="bg-[#0F111A]">
-                            {c.flag} {c.code}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="tel"
-                        value={phoneInput}
-                        onChange={e => { setPhoneInput(formatLocalPhone(e.target.value)); setPhoneError(''); }}
-                        placeholder="(555) 000-0000"
-                        className="flex-1 h-11 bg-white/5 border border-white/10 rounded-xl px-4 text-white focus:border-[#4C6FFF] outline-none transition-all text-sm placeholder:text-white/30 min-w-0"
+                    <div className="phone-input-wrapper">
+                      <PhoneInput
+                        international
+                        countryCallingCodeEditable={false}
+                        defaultCountry="US"
+                        value={phoneValue}
+                        onChange={(val) => { setPhoneValue(val); setPhoneError(''); }}
+                        placeholder="Enter phone number"
+                        className="vilox-phone-input"
                       />
                     </div>
                     <button

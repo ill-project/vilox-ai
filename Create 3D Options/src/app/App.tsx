@@ -1,42 +1,11 @@
 // Vilox AI — App.tsx
 // Root component — wraps all providers and the router
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { RouterProvider } from 'react-router';
 import { router } from './routes';
 import { GlobalProvider } from './context/GlobalContext';
 import { AuthProvider } from './context/AuthContext';
-import { useAuth } from './context/AuthContext';
-
-// Identifies the logged-in user to Smartsupp and resets the conversation on
-// user change so each account always starts with a fresh, isolated chat thread.
-function SmartsuppIdentity() {
-  const { user } = useAuth();
-
-  useEffect(() => {
-    // Wait for Smartsupp to load (it loads async)
-    const apply = () => {
-      if (typeof window.smartsupp !== 'function') return;
-      if (user) {
-        // Identify this user so the agent sees who is chatting
-        window.smartsupp('name', user.user_metadata?.full_name ?? user.email ?? '');
-        window.smartsupp('email', user.email ?? '');
-        window.smartsupp('variables', { userId: { label: 'User ID', value: user.id } });
-      } else {
-        // Logged out — clear identity and reset conversation so next user starts fresh
-        window.smartsupp('name', '');
-        window.smartsupp('email', '');
-        window.smartsupp('chat:close');
-      }
-    };
-    // Try immediately, retry once after delay in case widget hasn't loaded yet
-    apply();
-    const t = setTimeout(apply, 2000);
-    return () => clearTimeout(t);
-  }, [user?.id]); // re-run only when the user actually changes
-
-  return null;
-}
 
 interface ErrorState { error: Error | null; }
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorState> {
@@ -64,7 +33,6 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <GlobalProvider>
-          <SmartsuppIdentity />
           <RouterProvider router={router} />
         </GlobalProvider>
       </AuthProvider>

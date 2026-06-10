@@ -120,7 +120,7 @@ async function fetchCoinGeckoPrices(): Promise<boolean> {
       : {};
     const res = await fetch(
       `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`,
-      { headers, signal: AbortSignal.timeout(8000) }
+      { cache: 'no-store', headers, signal: AbortSignal.timeout(8000) }
     );
     if (!res.ok) return false;
     const data: Record<string, { usd: number; usd_24h_change: number }> = await res.json();
@@ -163,7 +163,7 @@ async function fetchStockQuote(symbol: string): Promise<void> {
   if (!ALPHA_VANTAGE_KEY) return;
   try {
     const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${ALPHA_VANTAGE_KEY}`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(8_000) });
+    const resp = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8_000) });
     if (!resp.ok) return;
 
     const json = await resp.json() as {

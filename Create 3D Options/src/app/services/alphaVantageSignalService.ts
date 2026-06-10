@@ -67,7 +67,7 @@ async function fetchStockQuote(symbol: string): Promise<SignalRow | null> {
   if (!AV_KEY) return null;
 
   const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${AV_KEY}`;
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  const res = await fetch(url, { cache: 'no-store', headers: { Accept: 'application/json' } });
   if (!res.ok) return null;
 
   const data = await res.json();

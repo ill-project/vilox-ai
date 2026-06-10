@@ -95,6 +95,7 @@ export async function fetchCoinGeckoSignals(): Promise<SignalRow[]> {
   const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&price_change_percentage=1h,24h&order=market_cap_desc&per_page=20&page=1&sparkline=false`;
 
   const res = await fetch(url, {
+    cache: 'no-store',
     headers: { Accept: 'application/json' },
   });
 

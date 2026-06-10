@@ -99,7 +99,7 @@ export function Layout() {
   const [profile, setProfile] = useState<{ full_name: string | null; plan: string } | null>(null);
   const [txNotif, setTxNotif] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const clearNotif = useCallback(() => setTxNotif(null), []);
-  const isAuthPage = location.pathname === '/sign-in' || location.pathname === '/get-started' || location.pathname === '/sign-up';
+  const isAuthPage = ['/sign-in', '/get-started', '/sign-up', '/forgot-password', '/update-password'].includes(location.pathname);
 
   const toggleCollapsed = () => {
     setCollapsed(prev => {
@@ -414,7 +414,6 @@ export function Layout() {
 
 
 
-      {/* Tawk.to chat widget replaces FloatingAI and LiveChat */}
     </div>
   );
 }

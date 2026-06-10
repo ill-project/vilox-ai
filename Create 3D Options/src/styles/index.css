@@ -38,3 +38,82 @@ body {
 selection {
   background: rgba(76, 111, 255, 0.3);
 }
+
+/* react-phone-number-input dark theme overrides */
+.vilox-phone-input {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 0 12px;
+  gap: 8px;
+  transition: border-color 0.2s;
+}
+
+.vilox-phone-input:focus-within {
+  border-color: #4C6FFF;
+  box-shadow: 0 0 0 1px #4C6FFF;
+}
+
+.vilox-phone-input .PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.vilox-phone-input .PhoneInputCountrySelect {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  opacity: 0;
+  position: absolute;
+}
+
+.vilox-phone-input .PhoneInputCountrySelectArrow {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+}
+
+.vilox-phone-input .PhoneInputCountryIcon {
+  width: 22px;
+  height: 16px;
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.vilox-phone-input .PhoneInputCountryIcon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.vilox-phone-input .PhoneInputInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: white;
+  font-size: 14px;
+  min-width: 0;
+}
+
+.vilox-phone-input .PhoneInputInput::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Country select dropdown option styling */
+.PhoneInputCountrySelect option {
+  background: #0F111A;
+  color: white;
+}
