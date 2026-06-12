@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard, Users, DollarSign, TrendingUp, ShieldCheck, MessageSquare,
@@ -35,6 +35,13 @@ interface ChatMsg { id: string; user_id: string; message: string; sender: 'user'
 
 // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const fmt = (n: number, d = 2) => n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtCompact = (n: number) => {
+  if (n >= 1e12) return `$${(n / 1e12).toLocaleString(undefined, { maximumFractionDigits: 2 })}T`;
+  if (n >= 1e9)  return `$${(n / 1e9).toLocaleString(undefined,  { maximumFractionDigits: 2 })}B`;
+  if (n >= 1e6)  return `$${(n / 1e6).toLocaleString(undefined,  { maximumFractionDigits: 2 })}M`;
+  if (n >= 1e3)  return `$${(n / 1e3).toLocaleString(undefined,  { maximumFractionDigits: 2 })}K`;
+  return `$${fmt(n)}`;
+};
 const planColor = (p: string) => p === 'elite' ? 'text-[#FFD700] bg-[#FFD700]/10 border-[#FFD700]/20' : p === 'pro' ? 'text-[#4C6FFF] bg-[#4C6FFF]/10 border-[#4C6FFF]/20' : 'text-[#9CA3AF] bg-white/5 border-white/10';
 const kycColor = (s: string) => s === 'verified' ? 'text-[#00FFA3] bg-[#00FFA3]/10 border-[#00FFA3]/20' : s === 'pending' ? 'text-[#FBBF24] bg-[#FBBF24]/10 border-[#FBBF24]/20' : s === 'rejected' ? 'text-[#FF4D4D] bg-[#FF4D4D]/10 border-[#FF4D4D]/20' : 'text-[#6B7280] bg-white/5 border-white/10';
 const txColor = (s: string) => s === 'completed' ? 'text-[#00FFA3] bg-[#00FFA3]/10 border-[#00FFA3]/20' : s === 'pending' ? 'text-[#FBBF24] bg-[#FBBF24]/10 border-[#FBBF24]/20' : 'text-[#FF4D4D] bg-[#FF4D4D]/10 border-[#FF4D4D]/20';
@@ -167,7 +174,7 @@ function OverviewSection() {
   const stats = [
     { label: 'Total Users',    value: data?.totalUsers ?? 0,               icon: <Users size={20} />,         color: 'text-[#4C6FFF] bg-[#4C6FFF]/10' },
     { label: 'Active Today',   value: data?.activeUsersToday ?? 0,         icon: <Activity size={20} />,      color: 'text-[#00FFA3] bg-[#00FFA3]/10' },
-    { label: 'Total Balance',  value: `$${fmt(data?.totalDeposits ?? 0)}`, icon: <DollarSign size={20} />,    color: 'text-[#FBBF24] bg-[#FBBF24]/10' },
+    { label: 'Total Balance',  value: fmtCompact(data?.totalDeposits ?? 0), icon: <DollarSign size={20} />,    color: 'text-[#FBBF24] bg-[#FBBF24]/10' },
     { label: 'Trades Today',   value: data?.tradesToday ?? 0,            icon: <TrendingUp size={20} />,    color: 'text-[#A78BFA] bg-[#A78BFA]/10' },
     { label: 'Pending KYC',    value: data?.pendingKyc ?? 0,             icon: <ShieldCheck size={20} />,   color: 'text-[#F97316] bg-[#F97316]/10' },
     { label: 'Unread Chats',   value: data?.unreadChats ?? 0,            icon: <MessageSquare size={20} />, color: 'text-[#EC4899] bg-[#EC4899]/10' },
@@ -296,19 +303,37 @@ function UsersSection() {
     if (!confirm(`Log in as ${u.full_name || u.email || 'this user'}?\n\nNote: The magic link will open in a new tab. Your admin session here remains active — the two sessions are separate.`)) return;
     setBusy(u.id);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { supabaseAdminPanel } = await import('../lib/supabaseAdminPanel');
+      const { data: { session } } = await supabaseAdminPanel.auth.getSession();
       if (!session) throw new Error('Not authenticated');
-      const res = await supabase.functions.invoke('admin-impersonate', {
-        body: { userId: u.id },
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (res.error) throw new Error(res.error.message ?? 'Edge Function error');
-      if (res.data?.error) throw new Error(res.data.error);
-      if (!res.data?.url) throw new Error('No login URL returned — check admin-impersonate Edge Function logs');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-impersonate`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+          },
+          body: JSON.stringify({ userId: u.id }),
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || `Edge function error: ${response.status}`);
+      }
+
+      if (!data?.url) throw new Error('No login URL returned');
+      
       await adminInsertLog('impersonate_user', u.id, `Admin logged in as ${u.email ?? u.id}`);
-      window.open(res.data.url, '_blank');
+      window.open(data.url, '_blank');
       show('success', `Opened session as ${u.full_name || u.email}`);
-    } catch (e: unknown) { show('error', (e as Error).message); }
+    } catch (e: unknown) { 
+      console.error("Impersonate error:", e);
+      show('error', (e as Error).message); 
+    }
     setBusy(null);
   };
 
